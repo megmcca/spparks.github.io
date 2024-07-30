@@ -1,0 +1,96 @@
+"SPPARKS Website"_sws - "SPPARKS Documentation"_sd - "SPPARKS Commands"_sc :c
+
+:link(sws,https://spparks.github.io)
+:link(sd,Manual.html)
+:link(sc,Section_commands.html#comm)
+
+:line
+
+app_style potts/graingrowth/crystal command :h3
+
+[Syntax:]
+
+app_style style crystal Q :pre
+
+style = {potts/graingrowth/crystal}
+crystal = {cubic} or {hcp}
+Q = number of spin states :ul
+
+[Examples:]
+
+app_style potts/graingrowth/crystal hcp 100000
+app_style potts/graingrowth/crystal cubic 6400
+
+[Description:]
+
+This is an on-lattice application which evolves a Q-state Ising model 
+or Potts model, where each lattice site has a spin value from 1 to Q.
+Sites flip their spin as the model evolves.
+This Potts variant allows the simulation of microstructure in metallic materials by assigning each site a quaternion, n, which represents the orientation of a crystalline grain at that site. 
+The disorientation theta between two quaternions of neighboring sites is calculated to allow models of grain boundary energy to be applied, which in turn modify site energies as described below.
+
+The Hamiltonian representing the energy of site I is as follows:
+
+Hi = Sum_j delta_ij * f(theta) :pre
+
+where Sum_j is a sum over all the neighbor sites of site I and
+delta_ij is 0 if the spin of sites I and J are the same and 1 if they
+are different. In potts/graingrowth/crystal, delta_ij is then modified by the function f(theta), which reperesents the disorientation relationship between the site I's quaternion and its neighboring quaternions. For more information on disorientation with respect to grain boundary geometry and energy calculations, please see e.g. XYZ. 
+
+
+Currently, one grain boundary energy model is applied in this app: the Read-Shockley low-angle grain boundary energy approximation. Briefly, the Read-Shockley model assumes that neighboring grains with disorientations at less than approximately 15 degrees create boundaries made of a sequence of dislocations, which generally have lower energy than standard, higher-angle grain boundaries. More information can be found at the citation ABC below. 
+
+In this app, the site Hamiltonian Hi is modified by Read-Shockley as follows:
+
+// piecewise function, for all neighbors J of I, if the sites' quaternions are the same is 0 continue, else calculate the ratio of the disorientation angle and the Read-Shockley 15dg. If the ratio < 1, then site energy += ratio * (1 - log(ratio)), else site energy = 1. Once summed, divide that energy by half (because the neighbor site also carries 1/2 of the energy).
+
+The energy of the entire system is the sum of Hi over
+all sites.  
+
+These applications perform Glauber dynamics, meaning the spin is
+flipped on a single site.  See "app_style
+diffusion"_app_diffusion.html for an Ising model which performs
+Kawasaki dynamics, meaning the spins on two neighboring sites are
+swapped.
+
+As explained on "this page"_app_style.html, these applications can be
+evolved by either a kinetic Monte Carlo (KMC) or rejection KMC (rKMC)
+algorithm.  You must thus define a KMC solver or sweeping method to be
+used with the application via the "solve_style"_solve_style.html or
+"sweep"_sweep.html commands.
+
+For solution by a KMC algorithm, a site event is a spin flip and its
+probability is min\[1,exp(-dE/kT)\], where dE = Efinal - Einitial
+using the Hamiltonian defined above for the energy of the site, and T
+is the temperature of the system defined by the
+"temperature"_temperature.html command (which includes the Boltzmann
+constant k implicitly).  The KMC algorithm does not allow spin flips
+known as "wild" flips, even at finite temperature.  These are flips to
+values that are not equal to any neighbor site value.
+
+For solution by a rKMC algorithm, this app uses the same 
+rejection-based algorithm as {potts} - a random spin from
+1 to Q is chosen. The final change in energy, dE = Efinal -
+Einitial, is calculated, as is a uniform random number R between 0 and
+1.  The new state is accepted if R < min\[1,exp(-dE/kT)\], else it is
+rejected.
+
+The rKMC algorithm for the {potts} style does allow spin flips known
+as "wild" flips.  These are flips to values that are not equal to any
+neighbor site value.  At temperature 0.0 these are effectively
+disallowed, since they will increase the energy of the system (except
+in the uninteresting case when the site already has a spin value not
+equal to any neighbor values), but at finite temperature they will
+have a non-zero probability of occurring.
+
+:line
+
+[Restrictions:] none
+
+[Related commands:]
+
+"app_style potts"_app_potts.html
+
+# "app_style ising"_app_ising.html
+
+[Default:] none
